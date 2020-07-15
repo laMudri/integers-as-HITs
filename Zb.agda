@@ -1,15 +1,19 @@
-{-# OPTIONS --cubical #-}
+{-# OPTIONS --cubical --safe #-}
 
 open import Cubical.Core.Everything
 open import Cubical.Foundations.Function
 open import Cubical.Data.Bool
+open import Cubical.Data.Empty
 open import Cubical.Data.Nat
+open import Cubical.Data.Unit
 open import Cubical.Foundations.GroupoidLaws
-open import Cubical.Foundations.Prelude
+open import Cubical.Foundations.Prelude hiding (Square)
 open import Cubical.Foundations.Isomorphism
 open import Cubical.Foundations.Univalence
 open import Cubical.Foundations.Equiv
 open import Cubical.Foundations.Transport
+open import Cubical.Relation.Nullary
+open import Cubical.Relation.Nullary.DecidableEq
 
 
 ---- Contents:
@@ -183,7 +187,7 @@ BiInvtoEq f h = ua (f , BiInvtoEquiv f h)
 EquivJ' : {ℓ ℓ' : _} (P : (B A : Type ℓ) → (e : B ≃ A) → Type ℓ')
         → (P0 : (A : Type ℓ) → P A A (idEquiv A))
         → (B A : Type ℓ) → (e : B ≃ A) → P B A e
-EquivJ' P P0 B A e = EquivJ (λ A B e → P B A e) P0 A B e
+EquivJ' P P0 B A e = EquivJ {A = B} (λ A e → P A _ e) (P0 A) e
 
 D : {l l' : _} (X Y : Type l) (f : X ≃ Y) → Type (ℓ-max (ℓ-suc l) (ℓ-suc l'))
 D {l} {l'} X Y f = (C : (Z : Type l) → (X ≃ Z) → Type l') → C X (idEquiv X) → C Y f
@@ -471,3 +475,43 @@ rec_is_id (r n i) = λ j → r (rec_is_id n j) i
 ℤisℤ : ℤ ≃ 𝕫
 ℤisℤ = isoToEquiv
   (record {fun = ℤto𝕫 ; inv = 𝕫toℤ ; rightInv = 𝕫toℤto𝕫 ; leftInv = ℤto𝕫toℤ  })
+
+-- 𝕫 is a set
+
+abs𝕫 : 𝕫 → ℕ
+abs𝕫 zero = 0
+abs𝕫 (strpos m) = suc m
+abs𝕫 (strneg n) = suc n
+
+-- This function gives us injectivity of strpos and strneg.
+predabs𝕫 : 𝕫 → ℕ
+predabs𝕫 zero = zero
+predabs𝕫 (strpos m) = m
+predabs𝕫 (strneg n) = n
+
+Is-zero : 𝕫 → Type₀
+Is-zero zero = Unit
+Is-zero (strpos x) = ⊥
+Is-zero (strneg x) = ⊥
+
+Is-strpos : 𝕫 → Type₀
+Is-strpos zero = ⊥
+Is-strpos (strpos x) = Unit
+Is-strpos (strneg x) = ⊥
+
+_≟𝕫_ : Discrete 𝕫
+zero ≟𝕫 zero = yes refl
+zero ≟𝕫 strpos n = no λ p → subst Is-zero p tt
+zero ≟𝕫 strneg n = no λ p → subst Is-zero p tt
+strpos m ≟𝕫 zero = no λ p → subst Is-zero (sym p) tt
+strpos m ≟𝕫 strpos n = mapDec (cong strpos) (_∘ cong predabs𝕫) (discreteℕ m n)
+strpos m ≟𝕫 strneg n = no λ p → subst Is-strpos p tt
+strneg m ≟𝕫 zero = no λ p → subst Is-zero (sym p) tt
+strneg m ≟𝕫 strpos n = no λ p → subst Is-strpos (sym p) tt
+strneg m ≟𝕫 strneg n = mapDec (cong strneg) (_∘ cong predabs𝕫) (discreteℕ m n)
+
+𝕫-isSet : isSet 𝕫
+𝕫-isSet = Discrete→isSet _≟𝕫_
+
+ℤ-isSet : isSet ℤ
+ℤ-isSet = subst isSet (sym (ua ℤisℤ)) 𝕫-isSet
